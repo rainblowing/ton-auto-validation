@@ -5,14 +5,58 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [cheshire.core :as json]
+            [clojure.tools.cli :refer [parse-opts]]
             ))
 
-(let [addr *command-line-args*]
+(def cli-options
+  [["-f" "--file PATH" "Path to json file with staking configs"
+    :default "stake.json"
+    ]
+   ["-h" "--help"]]
+  )
+
+(defn usage [options-summary]
+  (->>
+   ["Autostaking for FreeTON"
+    ""
+    "Usage: stake.clj [options] -- <ton address>"
+    ""
+    "Options:"
+    options-summary
+    ""
+    "<ton address> - full address on TON blockchain"
+    ]
+   (str/join \newline)
+   )
+  )
+
+(defn error-message [errors]
+  (str "Errors:\n" (str/join \newline errors))
+  )
+
+(defn validate-args [args]
+  (let [{:keys [options arguments errors summary]} (parse-opts args cli-options)]
+    (cond
+      (:help options) {:exit-message (usage summary) :ok? :true}
+      errors {:exit-message (error-message errors)}
+      (> (count arguments) 0) {:addr (first arguments) :options options}
+      :else {:exit-message (usage summary)}
+      )
+    )
+  )
+
+(defn exit [status msg]
+  (println msg)
+  (System/exit status)
+  )
+
+(let [{:keys [addr options exit-message ok?]} (validate-args *command-line-args*)]
   (cond
-    (nil? addr) (println "USAGE: stake.clj <ton address>")  
+    exit-message (exit (if ok? 0 1) exit-message)  
     :else
     (do
       (println "addr = " addr)
+      (println "params-file = " (options :file))
       (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
                                           (-> (str (System/getenv))
                                               (subs 1)
@@ -21,7 +65,8 @@
             dest (env "elector_addr")
             out_trans (->   
                        (sh
-                        (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "run" addr
+                        (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
+                        "run" addr
                         "getTransactions" "{}"
                         "--abi" (str (env "CONFIGS_DIR") "/" "SafeMultisigWallet.abi.json"))
                        (get :out)
@@ -49,7 +94,7 @@
                  first
                  )
             params (->
-                    (slurp "stake.json")
+                    (slurp (options :file))
                     str
                     json/parse-string
                     )
@@ -90,4 +135,5 @@
       )
     )
   )
+
 
