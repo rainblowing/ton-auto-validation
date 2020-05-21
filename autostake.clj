@@ -113,7 +113,7 @@
                             (println "rqb" (env "recover_query_boc"))
 
                             (->
-                             (sh
+                             (str
                               (str (env "UTILS_DIR") "/tonos-cli")
                               "call" (env "MSIG_ADDR")
                               "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
