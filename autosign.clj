@@ -61,6 +61,7 @@
     exit-message (exit (if ok? 0 1) exit-message)  
     :else
     (do
+      (println "Signing...")
       (println "addr = " addr)
       (println "keys = " keys)
       (println "opts = " options)

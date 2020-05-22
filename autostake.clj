@@ -19,7 +19,7 @@
   (->>
    ["Autostaking for FreeTON"
     ""
-    "Usage: stake.clj [options] -- <ton address>"
+    "Usage: autostake.clj [options] -- <ton address>"
     ""
     "Options:"
     options-summary
@@ -102,6 +102,7 @@
             ]
         
         (println (java.util.Date.))
+        (println "Staking... " stake-size)
         
         (cond
           (not (empty? trans)) (do
@@ -111,19 +112,6 @@
           (not (= res 0)) (do
                             (println "Elections started" res)
                             (println "rqb" (env "recover_query_boc"))
-
-                            (->
-                             (str
-                              (str (env "UTILS_DIR") "/tonos-cli")
-                              "call" (env "MSIG_ADDR")
-                              "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
-                              "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
-                              "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
-                              )
-                             (println)
-                             )
-
-                            (println "Staking " stake-size)
                             (sh
                              (str (env "NET_TON_DEV_SRC_TOP_DIR") "/scripts/validator_msig.sh")
                              (str stake-size)

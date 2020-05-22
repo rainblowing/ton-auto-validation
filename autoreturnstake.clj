@@ -102,26 +102,28 @@
             ]
         
         (println (java.util.Date.))
+        (println "Returning stake...")
         
         (cond
           (not (empty? trans)) (do
                                  (println "There are unsigned transactions for voting")
                                  (println "trans = " trans)
                                  )
-          (not (= res 0)) (do
-                            (println "Elections started" res)
-                            (println "rqb" (env "recover_query_boc"))
-
-                            (->
-                             (str
-                              (str (env "UTILS_DIR") "/tonos-cli")
-                              "call" (env "MSIG_ADDR")
-                              "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
-                              "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
-                              "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
-                              )
-                             (println)
-                             )
+          (not (= res 0))
+          (do
+            (println "Elections started" res)
+            (println "rqb" (env "recover_query_boc"))
+            
+            (->
+             (sh
+              (str (env "UTILS_DIR") "/tonos-cli")
+              "call" (env "MSIG_ADDR")
+              "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
+              "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
+              "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
+              )
+             (println)
+             ))
           :else (println "Elections hasn't started")
           )
         )
