@@ -5,12 +5,13 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [cheshire.core :as json]
+            [clojure.edn :as edn]
             [clojure.tools.cli :refer [parse-opts]]
             ))
 
 (def cli-options
-  [["-f" "--file PATH" "Path to json file with staking configs"
-    :default "stake.json"
+  [["-f" "--file PATH" "Path to edn file with staking configs"
+    :default "stake.edn"
     ]
    ["-h" "--help"]]
   )
@@ -94,36 +95,54 @@
                  first
                  )
             params (->
-                    (slurp (options :file))
+                    (options :file)
+                    slurp
                     str
-                    json/parse-string
+                    edn/read-string
                     )
-            stake-size (params "stake")
+            return-tries (params :autoreturn-tries)
+            return-res-file (str (options :file) ".return")
+            return-tried (->
+                          (try
+                            (->
+                             return-res-file
+                             slurp
+                             str
+                             edn/read-string
+                             )
+                            (catch Exception e (println e)
+                                   (spit return-res-file {:autoreturn-tried 0})
+                                   {:autoreturn-tried 0}
+                                   )
+                            )
+                          (get :autoreturn-tried)
+                          )
             ]
         
         (println (java.util.Date.))
         (println "Returning stake...")
         
         (cond
-          (not (empty? trans)) (do
-                                 (println "There are unsigned transactions for voting")
-                                 (println "trans = " trans)
-                                 )
-          (not (= res 0))
-          (do
-            (println "Elections started" res)
-            (println "rqb" (env "recover_query_boc"))
-            
-            (->
-             (sh
-              (str (env "UTILS_DIR") "/tonos-cli")
-              "call" (env "MSIG_ADDR")
-              "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
-              "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
-              "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
-              )
-             (println)
-             ))
+          (= res 0) (do
+                      (println "Elections hasn't started")
+                      (if (not (= return-tried 0)) (spit return-res-file {:autoreturn-tried 0}))
+                      )
+          (and (not (= res 0)) (< return-tried return-tries)) (do
+                                                              (println "Elections started" res)
+                                                              (println "rqb" (env "recover_query_boc"))
+                                                              
+                                                              (->
+                                                               (sh
+                                                                (str (env "UTILS_DIR") "/tonos-cli")
+                                                                "call" (env "MSIG_ADDR")
+                                                                "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
+                                                                "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
+                                                                "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
+                                                                )
+                                                               (println)
+                                                               )
+                                                              (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
+                                                              )
           :else (println "Elections hasn't started")
           )
         )

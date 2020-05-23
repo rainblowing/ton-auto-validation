@@ -3,6 +3,7 @@
 (ns ton-validation
   (:require [clojure.java.shell :as shell :refer [sh]]
             [clojure.string :as str]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
@@ -10,7 +11,7 @@
 
 (def cli-options
   [["-f" "--file PATH" "Path to json file with staking configs"
-    :default "stake.json"
+    :default "stake.edn"
     ]
    ["-h" "--help"]]
   )
@@ -96,32 +97,49 @@
             params (->
                     (slurp (options :file))
                     str
-                    json/parse-string
+                    edn/read-string
                     )
-            stake-size (params "stake")
+            stake-size (params :stake)
+            stake-tries (params :autostake-tries)
+            stake-res-file (str (options :file) ".stake")
+            stake-tried (->
+                        (try
+                          (->
+                           stake-res-file
+                           slurp
+                           str
+                           edn/read-string
+                           )
+                          (catch Exception e (println e)
+                                 {:autostake-tried 0})
+                          )
+                        (get :autostake-tried)
+                        )
             ]
         
         (println (java.util.Date.))
         (println "Staking... " stake-size)
+        (println "Tried " stake-tried " of " stake-tries)
         
         (cond
-          (not (empty? trans)) (do
-                                 (println "There are unsigned transactions for voting")
-                                 (println "trans = " trans)
-                                 )
-          (not (= res 0)) (do
-                            (println "Elections started" res)
-                            (println "rqb" (env "recover_query_boc"))
-                            (sh
-                             (str (env "NET_TON_DEV_SRC_TOP_DIR") "/scripts/validator_msig.sh")
-                             (str stake-size)
-                             )
-                            )
-          :else (println "Elections hasn't started")
-          )
+          (= res 0) (println "Elections hasn't started") 
+          (and (not (= res 0)) (< stake-tried stake-tries)) (do
+                                                              (println "Elections started" res)
+                                                              (println "rqb" (env "recover_query_boc"))
+                                                              (sh
+                                                               (str (env "NET_TON_DEV_SRC_TOP_DIR") "/scripts/validator_msig.sh")
+                                                               (str stake-size)
+                                                               )
+                                                              (spit stake-res-file {:autostake-tried (+ stake-tried 1)})
+                                                              )
+          :else (do
+                  (println "Too many staking tries this election round")
+                  (spit stake-res-file {:autostake-tried stake-tried})
+                  )
         )
       )
     )
   )
+)
 
 

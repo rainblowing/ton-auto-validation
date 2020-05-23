@@ -61,6 +61,7 @@
     exit-message (exit (if ok? 0 1) exit-message)  
     :else
     (do
+      (println (java.util.Date.))
       (println "Signing...")
       (println "addr = " addr)
       (println "keys = " keys)
