@@ -10,7 +10,7 @@
             ))
 
 (def cli-options
-  [["-f" "--file PATH" "Path to json file with staking configs"
+  [["-f" "--file PATH" "Path to edn file with staking configs"
     :default "stake.edn"
     ]
    ["-h" "--help"]]
@@ -95,7 +95,8 @@
                  first
                  )
             params (->
-                    (slurp (options :file))
+                    (options :file)
+                    slurp
                     str
                     edn/read-string
                     )
@@ -103,18 +104,20 @@
             stake-tries (params :autostake-tries)
             stake-res-file (str (options :file) ".stake")
             stake-tried (->
-                        (try
-                          (->
-                           stake-res-file
-                           slurp
-                           str
-                           edn/read-string
+                         (try
+                           (->
+                            stake-res-file
+                            slurp
+                            str
+                            edn/read-string
+                            )
+                           (catch Exception e (println e)
+                                  (spit stake-res-file {:autostake-tried 0})
+                                  {:autostake-tried 0}
+                                  )
                            )
-                          (catch Exception e (println e)
-                                 {:autostake-tried 0})
-                          )
-                        (get :autostake-tried)
-                        )
+                         (get :autostake-tried)
+                         )
             ]
         
         (println (java.util.Date.))
@@ -122,24 +125,23 @@
         (println "Tried " stake-tried " of " stake-tries)
         
         (cond
-          (= res 0) (println "Elections hasn't started") 
+          (= res 0) (do
+                      (println "Elections hasn't started")
+                      (if (not (= stake-tried 0)) (spit stake-res-file {:autostake-tried 0}))
+                      )                      
           (and (not (= res 0)) (< stake-tried stake-tries)) (do
                                                               (println "Elections started" res)
-                                                              (println "rqb" (env "recover_query_boc"))
-                                                              (sh
-                                                               (str (env "NET_TON_DEV_SRC_TOP_DIR") "/scripts/validator_msig.sh")
-                                                               (str stake-size)
-                                                               )
+                                                              (println (sh
+                                                                        (str (env "NET_TON_DEV_SRC_TOP_DIR") "/scripts/validator_msig.sh")
+                                                                        (str stake-size)
+                                                                        ))
                                                               (spit stake-res-file {:autostake-tried (+ stake-tried 1)})
                                                               )
-          :else (do
-                  (println "Too many staking tries this election round")
-                  (spit stake-res-file {:autostake-tried stake-tried})
-                  )
+          :else (println "Too many staking tries this election round")
+          )
         )
       )
     )
   )
-)
 
 

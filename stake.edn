@@ -1,1 +1,5 @@
-{"stake":45054}
+{
+    :stake 45054
+    :autoreturn-tries 3
+    :autostake-tries 3
+}

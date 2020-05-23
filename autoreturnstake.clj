@@ -121,6 +121,7 @@
         
         (println (java.util.Date.))
         (println "Returning stake...")
+        (println "Tried " return-tried " of " return-tries)
         
         (cond
           (= res 0) (do
@@ -143,7 +144,7 @@
                                                                )
                                                               (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
                                                               )
-          :else (println "Elections hasn't started")
+          :else (println "Too many staking tries this election round")
           )
         )
       )
