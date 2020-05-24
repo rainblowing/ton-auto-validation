@@ -5,7 +5,8 @@ Automation scripts for TON validation
 
 ### Prerequisites
 * Scripts require babashka to run them, for installation see https://github.com/borkdude/babashka
-* Scripte require installed and fully synced node, for more information see https://github.com/tonlabs/main.ton.dev
+* Scripts require installed and fully synced node, for more information see https://github.com/tonlabs/main.ton.dev
+* Example of crontab is provided, for it to work properly TONAUTO variable should be exported pointing to these scripts dir
 * Scripts quit once they do their job either successfully or not, so they are intended to run every period of time, 5 or 10 minutes or so. So if continuity is needed they are better to be launched through watch or cron jobs.
 
 ### Setup
