@@ -1,0 +1,5 @@
+*/10 * * * * . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $SCRIPTSDIR/ret.sh; $TONAUTO/autoreturnstake.clj -f $TONAUTO/stake.edn -- -1:AD47EA0C469262FE9CBDB07423DFD0E7173DD1DFD940EB2A962335EF85D2B859 >> $HOME/validator.log 2>&1
+*/10 * * * * sleep 15; . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $SCRIPTSDIR/ret.sh; $TONAUTO/autostake.clj -f $TONAUTO/stake.edn -- -1:AD47EA0C469262FE9CBDB07423DFD0E7173DD1DFD940EB2A962335EF85D2B859 >> $HOME/validator.log 2>&1
+*/10 * * * * sleep 30; . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $SCRIPTSDIR/ret.sh; $TONAUTO/autosign.clj -m 1 -M 3 -- -1:AD47EA0C469262FE9CBDB07423DFD0E7173DD1DFD940EB2A962335EF85D2B859 $CONFIGS_DIR/deploy3.keys.json $CONFIGS_DIR/deploy4.keys.json >> $HOME/valida$
+*/10 * * * * sleep 30; . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $SCRIPTSDIR/ret.sh; $TONAUTO/autosign.clj -m 2 -M 4 -- -1:8b2f47066d5c00320163064d2af2810637e6dc9a7cc08992a2e236e7ecce289b  $CONFIGS_DIR/deploy.keys.json $CONFIGS_DIR/deploy2.keys.json >> $HOME/valida$
+
