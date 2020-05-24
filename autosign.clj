@@ -83,7 +83,7 @@
                  str/trim
                  json/parse-string)
             trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (-> (get res "output") (get "transactions")))]
-        ;(println "trans = " trans)
+                                        ;(println "trans = " trans)
         (->>
          (for [x trans
                y keys]
