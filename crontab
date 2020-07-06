@@ -1,0 +1,3 @@
+*/20 * * * * . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $SCRIPTSDIR/ret.sh; $TONAUTO/autoreturnstake.clj -f $TONAUTO/stake.edn -- <wallet address> >> $HOME/validator.log 2>&1
+*/20 * * * * sleep 15; . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $TONAUTO/ret.sh; $TONAUTO/autostake.clj -f $TONAUTO/stake.edn -- <wallet address> >> $HOME/validator.log 2>&1
+*/20 * * * * sleep 30; . $HOME/.profile; cd $SCRIPTSDIR; . $SCRIPTSDIR/env.sh; . $TONAUTO/ret.sh; $TONAUTO/autosign.clj -m 1 -M 5 -- <wallet address> $KEYS_DIR/msig.keys.json $KEYS_DIR/msig.keys.2.json >> $HOME/validator.log 2>&1
