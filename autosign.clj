@@ -70,7 +70,13 @@
                                           (-> (str (System/getenv))
                                               (subs 1)
                                               (str/split #", |}")))] [k v]))
-            dest (env "elector_addr")
+            dest (->
+                  (sh
+                   "cat"
+                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
+                  (get :out)
+                  str/trim
+                  )
             out (->   
                  (sh
                   (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "run" addr
@@ -82,8 +88,9 @@
                  last
                  str/trim
                  json/parse-string)
-            trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (-> (get res "output") (get "transactions")))]
-                                        ;(println "trans = " trans)
+            trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (get res "transactions"))]
+
+        ;; (println "res = " res)          
         (->>
          (for [x trans
                y keys]

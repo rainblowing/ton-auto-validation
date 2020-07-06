@@ -56,14 +56,30 @@
     exit-message (exit (if ok? 0 1) exit-message)  
     :else
     (do
+      (println (java.util.Date.))
+      (println "Returning stake...")
       (println "addr = " addr)
       (println "params-file = " (options :file))
+
       (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
                                           (-> (str (System/getenv))
                                               (subs 1)
                                               (str/split #", |}")
                                               ))] [k v]))
-            dest (env "elector_addr")
+            dest (->
+                  (sh
+                   "cat"
+                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
+                  (get :out)
+                  str/trim
+                  )
+            msig (->
+                  (sh
+                   "cat"
+                   (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
+                  (get :out)
+                  str/trim
+                  )            
             out_trans (->   
                        (sh
                         (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
@@ -74,8 +90,9 @@
                        (str/split #"Result:" 2)
                        last
                        str/trim
-                       json/parse-string)
-            trans (filter #(= dest (% "dest")) (-> (get out_trans "output") (get "transactions")))
+                       json/parse-string
+                       )
+            trans (filter #(= dest (% "dest")) (get out_trans "transactions"))
             out (->
                  (sh
                   (str (env "TON_BUILD_DIR") "/lite-client/lite-client")
@@ -118,32 +135,44 @@
                           (get :autoreturn-tried)
                           )
             ]
-        
-        (println (java.util.Date.))
-        (println "Returning stake...")
+
+        (println "out = " out_trans)     
+        (println "dest = " dest)
+        (println "msig = " msig)
         (println "Tried " return-tried " of " return-tries)
-        
+
         (cond
           (= res 0) (do
                       (println "Elections hasn't started")
                       (if (not (= return-tried 0)) (spit return-res-file {:autoreturn-tried 0}))
                       )
           (and (not (= res 0)) (< return-tried return-tries)) (do
-                                                              (println "Elections started" res)
-                                                              (println "rqb" (env "recover_query_boc"))
-                                                              
-                                                              (->
-                                                               (sh
-                                                                (str (env "UTILS_DIR") "/tonos-cli")
-                                                                "call" (env "MSIG_ADDR")
-                                                                "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" (env "recover_query_boc") "\"}")
-                                                                "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
-                                                                "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
+                                                                (println "Elections started" res)
+
+                                                                (let [rqb (-> 
+                                                                           (sh
+                                                                            (str (env "TON_BUILD_DIR") "/crypto/fift")
+                                                                            "-I" (str (env "TON_SRC_DIR") "/crypto/fift/lib:" (env "TON_SRC_DIR") "/crypto/smartcont")
+                                                                            "-s" "recover-stake.fif"
+                                                                            (str (env "KEYS_DIR") "/elections/recover-query.boc")
+                                                                            )
+                                                                           (get :out)
+                                                                           ;println
+                                                                           )]
+                                                                  (println "rqb = " rqb)
+                                                                  (->
+                                                                   (sh
+                                                                    (str (env "UTILS_DIR") "/tonos-cli")
+                                                                    "call" msig
+                                                                    "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" rqb "\"}")
+                                                                    "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
+                                                                    "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
+                                                                    )
+                                                                   (println)
+                                                                   )
+                                                                  )
+                                                                (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
                                                                 )
-                                                               (println)
-                                                               )
-                                                              (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
-                                                              )
           :else (println "Too many staking tries this election round")
           )
         )

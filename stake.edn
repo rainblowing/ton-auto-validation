@@ -1,5 +1,5 @@
 {
-    :stake 45054
-    :autoreturn-tries 3
+    :stake 60606
+    :autoreturn-tries 2
     :autostake-tries 3
 }

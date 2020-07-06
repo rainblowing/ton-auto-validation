@@ -56,6 +56,8 @@
     exit-message (exit (if ok? 0 1) exit-message)  
     :else
     (do
+      (println (java.util.Date.))
+      (println "Staking... ")
       (println "addr = " addr)
       (println "params-file = " (options :file))
       (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
@@ -63,7 +65,20 @@
                                               (subs 1)
                                               (str/split #", |}")
                                               ))] [k v]))
-            dest (env "elector_addr")
+            dest (->
+                  (sh
+                   "cat"
+                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
+                  (get :out)
+                  str/trim
+                  )
+            msig (->
+                  (sh
+                   "cat"
+                   (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
+                  (get :out)
+                  str/trim
+                  )            
             out_trans (->   
                        (sh
                         (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
@@ -75,7 +90,7 @@
                        last
                        str/trim
                        json/parse-string)
-            trans (filter #(= dest (% "dest")) (-> (get out_trans "output") (get "transactions")))
+            trans (filter #(= dest (% "dest")) (get out_trans "transactions"))
             out (->
                  (sh
                   (str (env "TON_BUILD_DIR") "/lite-client/lite-client")
@@ -119,11 +134,11 @@
                          (get :autostake-tried)
                          )
             ]
-        
-        (println (java.util.Date.))
-        (println "Staking... " stake-size)
+        (println "out = " out_trans)     
+        (println "dest = " dest)
+        (println "msig = " msig)
+        (println "stake-size = " stake-size)
         (println "Tried " stake-tried " of " stake-tries)
-        
         (cond
           (= res 0) (do
                       (println "Elections hasn't started")
