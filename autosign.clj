@@ -71,10 +71,7 @@
                                               (subs 1)
                                               (str/split #", |}")))] [k v]))
             dest (->
-                  (sh
-                   "cat"
-                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
-                  (get :out)
+                  (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64")
                   str/trim
                   )
             out (->   

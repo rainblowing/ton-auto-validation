@@ -66,17 +66,11 @@
                                               (str/split #", |}")
                                               ))] [k v]))
             dest (->
-                  (sh
-                   "cat"
-                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
-                  (get :out)
+                  (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64")
                   str/trim
                   )
             msig (->
-                  (sh
-                   "cat"
-                   (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
-                  (get :out)
+                  (slurp (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
                   str/trim
                   )            
             out_trans (->   

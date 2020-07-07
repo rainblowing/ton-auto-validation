@@ -67,17 +67,11 @@
                                               (str/split #", |}")
                                               ))] [k v]))
             dest (->
-                  (sh
-                   "cat"
-                   (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
-                  (get :out)
+                  (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
                   str/trim
                   )
             msig (->
-                  (sh
-                   "cat"
-                   (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
-                  (get :out)
+                  (slurp (str (env "KEYS_DIR") "/" (env "VALIDATOR_NAME") ".addr"))
                   str/trim
                   )            
             out_trans (->   
@@ -149,7 +143,7 @@
           (and (not (= res 0)) (< return-tried return-tries)) (do
                                                                 (println "Elections started" res)
 
-                                                                (let [rqb (-> 
+                                                                (let [rqbs (-> 
                                                                            (sh
                                                                             (str (env "TON_BUILD_DIR") "/crypto/fift")
                                                                             "-I" (str (env "TON_SRC_DIR") "/crypto/fift/lib:" (env "TON_SRC_DIR") "/crypto/smartcont")
@@ -157,8 +151,10 @@
                                                                             (str (env "KEYS_DIR") "/elections/recover-query.boc")
                                                                             )
                                                                            (get :out)
-                                                                           ;println
-                                                                           )]
+                                                                           )
+                                                                       rqb (-> (sh "base64" (str (env "ELECTIONS_WORK_DIR") "/recover-query.boc")) (get :out) str/trim)
+                                                                       ;rqb (-> (java.util.Base64/getDecoder) (.decode (.getBytes (slurp (str (env "ELECTIONS_WORK_DIR") "/recover-query.boc") :encoding ""))))
+                                                                      ]
                                                                   (println "rqb = " rqb)
                                                                   (->
                                                                    (sh
