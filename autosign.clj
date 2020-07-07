@@ -78,7 +78,7 @@
                  (sh
                   (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "run" addr
                   "getTransactions" "{}"
-                  "--abi" (str (env "CONFIGS_DIR") "/" "SafeMultisigWallet.abi.json")) 
+                  "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json")) 
                  (get :out))
             res (->
                  (str/split out #"Result:" 2)
@@ -95,7 +95,7 @@
            )
          (map #(list (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "call" addr 
                      "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
-                     "--abi" (str (env "CONFIGS_DIR") "/" "SafeMultisigWallet.abi.json")
+                     "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json")
                      "--sign" (second %)))
          (map #(do (println %) (apply sh %)))
          )

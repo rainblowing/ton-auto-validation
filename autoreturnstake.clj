@@ -79,7 +79,7 @@
                         (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
                         "run" addr
                         "getTransactions" "{}"
-                        "--abi" (str (env "CONFIGS_DIR") "/" "SafeMultisigWallet.abi.json"))
+                        "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json"))
                        (get :out)
                        (str/split #"Result:" 2)
                        last
@@ -161,7 +161,7 @@
                                                                     (str (env "UTILS_DIR") "/tonos-cli")
                                                                     "call" msig
                                                                     "submitTransaction" (str "{\"dest\":\"" dest "\",\"value\":1000000000,\"bounce\":true,\"allBalance\":false,\"payload\":\"" rqb "\"}")
-                                                                    "--abi" (str (env "CONFIGS_DIR") "/SafeMultisigWallet.abi.json")
+                                                                    "--abi" (str (env "KEYS_DIR") "/SafeMultisigWallet.abi.json")
                                                                     "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
                                                                     )
                                                                    (println)

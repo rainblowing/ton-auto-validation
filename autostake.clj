@@ -78,7 +78,7 @@
                         (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
                         "run" addr
                         "getTransactions" "{}"
-                        "--abi" (str (env "CONFIGS_DIR") "/" "SafeMultisigWallet.abi.json"))
+                        "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json"))
                        (get :out)
                        (str/split #"Result:" 2)
                        last
