@@ -71,7 +71,7 @@
                                               (subs 1)
                                               (str/split #", |}")))] [k v]))
             dest (->
-                  (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64")
+                  (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
                   str/trim
                   )
             out (->   
