@@ -7,6 +7,7 @@
             [cheshire.core :as json]
             [clojure.edn :as edn]
             [clojure.tools.cli :refer [parse-opts]]
+            [clojure.pprint :as pp]
             ))
 
 (def cli-options
@@ -130,7 +131,8 @@
                           )
             ]
 
-        (println "out = " out_trans)     
+        (print "out = ")
+        (pp/pprint out_trans)
         (println "dest = " dest)
         (println "msig = " msig)
         (println "Tried " return-tried " of " return-tries)
@@ -164,7 +166,7 @@
                                                                     "--abi" (str (env "KEYS_DIR") "/SafeMultisigWallet.abi.json")
                                                                     "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
                                                                     )
-                                                                   (println)
+                                                                   (pprint)
                                                                    )
                                                                   )
                                                                 (spit return-res-file {:autoreturn-tried (+ return-tried 1)})

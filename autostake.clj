@@ -7,6 +7,7 @@
             [clojure.java.io :as io]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
+            [clojure.pprint :as pp]
             ))
 
 (def cli-options
@@ -128,7 +129,8 @@
                          (get :autostake-tried)
                          )
             ]
-        (println "out = " out_trans)     
+        (print "out = ")
+        (pp/pprint out_trans)
         (println "dest = " dest)
         (println "msig = " msig)
         (println "stake-size = " stake-size)

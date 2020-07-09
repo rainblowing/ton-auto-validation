@@ -7,6 +7,7 @@
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.edn :as edn]
+            [clojure.pprint :as pp]
             ))
 
 (def cli-options
@@ -64,8 +65,10 @@
       (println (java.util.Date.))
       (println "Signing...")
       (println "addr = " addr)
-      (println "keys = " keys)
-      (println "opts = " options)
+      (print "keys = ")
+      (pp/pprint keys)
+      (print "opts = ")
+      (pp/pprint options)
       (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
                                           (-> (str (System/getenv))
                                               (subs 1)
@@ -87,7 +90,6 @@
                  json/parse-string)
             trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (get res "transactions"))]
 
-        ;; (println "res = " res)          
         (->>
          (for [x trans
                y keys]
@@ -97,7 +99,7 @@
                      "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
                      "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json")
                      "--sign" (second %)))
-         (map #(do (println %) (apply sh %)))
+         (map #(do (pp/pprint %) (apply sh %)))
          )
         )
       )
