@@ -154,9 +154,11 @@
                                                                             )
                                                                            (get :out)
                                                                            )
-                                                                       rqb (-> (sh "base64" (str (env "ELECTIONS_WORK_DIR") "/recover-query.boc")) (get :out) str/trim)
+                                                                       rqb (-> (sh "base64" (str (env "KEYS_DIR") "/elections/recover-query.boc")) (get :out) str/trim)
                                                                        ;rqb (-> (java.util.Base64/getDecoder) (.decode (.getBytes (slurp (str (env "ELECTIONS_WORK_DIR") "/recover-query.boc") :encoding ""))))
                                                                       ]
+                                                                  (print "rqbs = ")
+                                                                  (pp/pprint rqbs)
                                                                   (println "rqb = " rqb)
                                                                   (->
                                                                    (sh
@@ -166,7 +168,7 @@
                                                                     "--abi" (str (env "KEYS_DIR") "/SafeMultisigWallet.abi.json")
                                                                     "--sign" (str (env "KEYS_DIR") "/msig.keys.json")
                                                                     )
-                                                                   (pprint)
+                                                                   (pp/pprint)
                                                                    )
                                                                   )
                                                                 (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
