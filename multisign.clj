@@ -92,15 +92,15 @@
         (pp/pprint file)
 
         (cond
-          (not (nil? (options :c)))
+          (options :submit)
           (do
             (println "Submitting transactions...")
             (->>
              file
              (map #(list tonos-cli
-                         "call" addr
-                         "submitTransaction" (str "{\"dest\":\"" (first %) "\",\"value\"" (second %) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
                          "-c" config
+                         "call" addr
+                         "submitTransaction" (str "{\"dest\":\"" (first %) "\",\"value\":" (second %) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
                          "--abi" abi
                          "--sign" sign))
              (map #(do (pp/pprint %) (apply sh %)))
