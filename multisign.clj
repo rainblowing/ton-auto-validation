@@ -130,7 +130,23 @@
                        :else nil)
                      )
                   )
-             ;(filter #(and (not (nil? %)) (not empty? %)))
+             (map #(do
+                     (pp/pprint %)
+                     (cond
+                       (nil? %) nil
+                       (empty? %) nil
+                       :else
+                       (sh
+                        tonos-cli
+                        "-c" config
+                        "call" ((first %) "dest")
+                        "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
+                        "--abi" abi
+                        "--sign" sign
+                       )
+                       )
+                     )
+                  )
              )
             )
           )
