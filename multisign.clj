@@ -6,10 +6,8 @@
             [clojure.java.io :as io]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
-            [clojure.edn :as edn]
             [clojure.pprint :as pp]
             [clojure.data.csv :as csv]
-            [clojure.java.io :as io]
             ))
 
 (def cli-options
@@ -61,6 +59,15 @@
   (System/exit status)
   )
 
+(defn take-env
+  "reads environment variables"
+  []
+  (into {} (for [[k v] (map #(str/split % #"=" 2)
+                            (-> (str (System/getenv))
+                                (subs 1)
+                                (str/split #", |}")))] [k v]))
+  )
+
 (defn take-csv
   "Takes file name and reads csv data"
   [fname]
@@ -77,10 +84,7 @@
       (println "addr = " addr)
       (print "opts = ")
       (pp/pprint options)
-      (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
-                                          (-> (str (System/getenv))
-                                              (subs 1)
-                                              (str/split #", |}")))] [k v]))
+      (let [env (take-env)
             tonos-cli (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
             file (take-csv (options :file))
             abi (options :abi)
@@ -97,13 +101,48 @@
             (println "Submitting transactions...")
             (->>
              file
-             (map #(list tonos-cli
-                         "-c" config
-                         "call" addr
-                         "submitTransaction" (str "{\"dest\":\"" (first %) "\",\"value\":" (second %) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
-                         "--abi" abi
-                         "--sign" sign))
-             (map #(do (pp/pprint %) (apply sh %)))
+             (map #(list (list (str/trim (first %)) (str/trim (second %)))
+                    (list tonos-cli
+                          "-c" config
+                          "run" (first %)
+                          "getTransactions" "{}"
+                          "--abi" abi)))
+             (map #(list (first %) (apply sh (second %))))
+             (map #(do
+                     (pp/pprint %)
+                     (list (first %)
+                           (cond
+                             (str/includes? ((second %) :out) "Result")
+                             (->
+                              (str/split ((second %) :out) #"Result:" 2)
+                              last
+                              str/trim
+                              json/parse-string
+                              (get "transactions")
+                              )
+                             :else nil)
+                           ))
+                  )
+             (map #(do
+                     (println "Filtering execessssive transactions for " (first (first %)) "...")
+                     (pp/pprint %)
+                     (list (first %)
+                           (cond
+                             (nil? (second %)) nil
+                                        ;if any of transactions contains destination address from file for this address
+                                        ;we return nil as protection and cut-off circuit from double spending
+                             (seq (filter (fn [trans] (and (= (first (first %)) (trans "dest")))) (second %))) nil
+                                        ;(and (= (first (first %)) ((second %) "dest")) (= (second (first %)) ((second %) "value"))) nil
+                             :else (list tonos-cli
+                                         "-c" config
+                                         "call" addr
+                                         "submitTransaction" (str "{\"dest\":\"" (first (first %)) "\",\"value\":" (second (first %)) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
+                                         "--abi" abi
+                                         "--sign" sign)))))
+             (map #(do (pp/pprint %)
+                       (cond
+                         (nil? (second %)) (println "No submission for " (first %))
+                         :else (apply sh (second %)))))
              ))
           :else
           (do
@@ -143,7 +182,7 @@
                         "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
                         "--abi" abi
                         "--sign" sign
-                       )
+                        )
                        )
                      )
                   )

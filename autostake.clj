@@ -4,7 +4,6 @@
   (:require [clojure.java.shell :as shell :refer [sh]]
             [clojure.string :as str]
             [clojure.edn :as edn]
-            [clojure.java.io :as io]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.pprint :as pp]

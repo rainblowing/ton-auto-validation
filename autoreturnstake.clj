@@ -3,7 +3,6 @@
 (ns ton-validation
   (:require [clojure.java.shell :as shell :refer [sh]]
             [clojure.string :as str]
-            [clojure.java.io :as io]
             [cheshire.core :as json]
             [clojure.edn :as edn]
             [clojure.tools.cli :refer [parse-opts]]
