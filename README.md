@@ -13,5 +13,5 @@ Automation scripts for TON validation
 * autosign script is looking for unsigned transactions on the network for given address and signs them with provided paths to keys
 * autostake script waits for elections to starts and sends a transaction for a new stake. Stake size is specified inside stake.json, it's done so to let the user redefine next stake size without restarting scripts with new parameters.
 * autoreturnstake script waits as well for elections to start and returns the previous stakes.
-
+* multisign script allows to submit or sign multiple transactions
 
