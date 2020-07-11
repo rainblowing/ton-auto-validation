@@ -71,8 +71,14 @@
 (defn take-csv
   "Takes file name and reads csv data"
   [fname]
-  (with-open [file (io/reader fname)]
-    (csv/read-csv (slurp file))))
+  (vec (with-open [file (io/reader fname)]
+         (csv/read-csv (slurp file)))))
+
+(defn hex-to-num-str
+  "converts hex number to normal number string"
+  [hex-num]
+  (.toString (read-string hex-num))
+  )
 
 (let [{:keys [addr options exit-message ok?]} (validate-args *command-line-args*)]
   (cond
@@ -101,13 +107,16 @@
             (println "Submitting transactions...")
             (->>
              file
+                                        ;get transactions for all addresses in file
              (map #(list (list (str/trim (first %)) (str/trim (second %)))
-                    (list tonos-cli
-                          "-c" config
-                          "run" (first %)
-                          "getTransactions" "{}"
-                          "--abi" abi)))
+                         (list tonos-cli
+                               "-c" config
+                               "run" (first %)
+                               "getTransactions" "{}"
+                               "--abi" abi)))
+                                        ;batch script launch
              (map #(list (first %) (apply sh (second %))))
+                                        ;get results for all addresses
              (map #(do
                      (pp/pprint %)
                      (list (first %)
@@ -123,16 +132,17 @@
                              :else nil)
                            ))
                   )
+                                        ;filter those addresses which already have destination specified in file
+                                        ;for others submit transaction with given address and amount from file
              (map #(do
                      (println "Filtering execessssive transactions for " (first (first %)) "...")
                      (pp/pprint %)
                      (list (first %)
                            (cond
                              (nil? (second %)) nil
-                                        ;if any of transactions contains destination address from file for this address
+                                        ;if any of transactions contains destination address and amount value from file
                                         ;we return nil as protection and cut-off circuit from double spending
-                             (seq (filter (fn [trans] (and (= (first (first %)) (trans "dest")))) (second %))) nil
-                                        ;(and (= (first (first %)) ((second %) "dest")) (= (second (first %)) ((second %) "value"))) nil
+                             (seq (filter (fn [trans] (and (= (first (first %)) (trans "dest")) (= (second (first %)) (hex-to-num-str (trans "value"))))) (second %))) nil
                              :else (list tonos-cli
                                          "-c" config
                                          "call" addr
@@ -147,49 +157,39 @@
           :else
           (do
             (println "Confirming transactions...")
-            (->>
-             file
-             (map #(list tonos-cli
-                         "-c" config
-                         "run" (first %)
-                         "getTransactions" "{}"
-                         "--abi" abi))
-             (map #(apply sh %))
-             (map #(do
-                     (pp/pprint %)
-                     (cond
-                       (str/includes? (% :out) "Result")
-                       (->
-                        (str/split (% :out) #"Result:" 2)
-                        last
-                        str/trim
-                        json/parse-string
-                        (get "transactions")
-                        )
-                       :else nil)
-                     )
-                  )
-             (map #(do
-                     (pp/pprint %)
-                     (cond
-                       (nil? %) nil
-                       (empty? %) nil
-                       :else
-                       (sh
-                        tonos-cli
+            (let [
+                  trans (->
+                         (sh tonos-cli
+                             "-c" config
+                             "run" addr
+                             "getTransactions" "{}"
+                             "--abi" abi)
+                         (get :out)
+                         (str/split #"Result:" 2)
+                         last
+                         str/trim
+                         json/parse-string
+                         (get "transactions"))
+                  ]
+              
+              (println "trans = ")
+              (pp/pprint trans)
+
+              (map #(sh tonos-cli
                         "-c" config
-                        "call" ((first %) "dest")
-                        "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
+                        "call" addr
+                        "confirmTransaction" (str "{\"transactionId\":\"" (% "id") "\"}")
                         "--abi" abi
-                        "--sign" sign
+                        "--sign" sign                         
                         )
-                       )
-                     )
-                  )
-             )
-            )
+              ;(filter #(contains? file (vector (% "dest") (hex-to-num-str (% "value")))) trans)
+                   trans)
+              )
+            )          
           )
         )
       )
     )
   )
+
+
