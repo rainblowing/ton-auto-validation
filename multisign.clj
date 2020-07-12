@@ -13,6 +13,7 @@
 
 (def cli-options
   [["-s" "--submit" "submit only transactions, else will only confirm transactions"]
+   ["-g" "--gen" "generate address amount transaction file"]
    ["-h" "--help"]
    ["-c" "--config PATH" "location of config file"
     :default "default"]
@@ -101,16 +102,21 @@
 (defn get-tx-result
   "gets result from txs"
   [trans]
-                                        ;(pp/pprint trans)
-  (->
-   trans
-   (get :out)
-   (str/split #"Result:" 2)
-   last
-   str/trim
-   json/parse-string
-   (get "transactions")
-   )
+  (pp/pprint trans)
+  (cond
+    (= (trans :exit) 0)
+    (->
+     trans
+     (get :out)
+     (str/split #"Result:" 2)
+     last
+     str/trim
+     json/parse-string
+     (get "transactions")
+     )
+    :else
+    trans
+    )
   )
 
 (defn make-elem
@@ -130,7 +136,6 @@
   [coll arg]
   (seq (filter #(= (first %) arg) coll))
   )
-
 
 (let [{:keys [addr options exit-message ok?]} (validate-args *command-line-args*)]
   (cond
@@ -159,12 +164,27 @@
         (pp/pprint file-tx)
 
         (cond
+          (options :gen)          
+          (do
+            (println "Generating submission files with addr, amount, txid...")
+            (->>
+             (sh tonos-cli
+                 "-c" config
+                 "run" addr
+                 "getTransactions" "{}"
+                 "--abi" abi)
+             get-tx-result
+             (map #(make-elem (% "dest") (hex-to-num-str (% "value")) (% "id")))
+             vec
+             (spit file-tx-name)            
+             )
+            (slurp-file file-tx-name)
+          )
           (options :submit)
           (do
             (println "Submitting transactions...")
             (let
                 [trans (->
-                                        ;get all transactions
                         (sh tonos-cli
                             "-c" config
                             "run" addr
@@ -191,8 +211,7 @@
                                        "--sign" sign)
                                    get-tx-result
                                    )]
-                           (make-elem (res "dest") (res "value") (res "id")))
-                   
+                           (if (or (nil? res) (map? res)) res (make-elem (res "dest") (res "value") (res "id"))))                   
                    )
                 addr-amount)
                vec
