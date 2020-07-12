@@ -112,7 +112,6 @@
      last
      str/trim
      json/parse-string
-     (get "transactions")
      )
     :else
     trans
@@ -174,6 +173,7 @@
                  "getTransactions" "{}"
                  "--abi" abi)
              get-tx-result
+             (get "transactions")             
              (map #(make-elem (% "dest") (hex-to-num-str (% "value")) (% "id")))
              vec
              (spit file-tx-name)            
@@ -190,7 +190,9 @@
                             "run" addr
                             "getTransactions" "{}"
                             "--abi" abi)
-                        get-tx-result)
+                        get-tx-result
+                        (get "transactions")                        
+                        )
                  trans_values (map #(make-elem (% "dest") (hex-to-num-str (% "value")) (% "id")) trans)
                  ]
 
@@ -211,7 +213,7 @@
                                        "--sign" sign)
                                    get-tx-result
                                    )]
-                           (if (or (nil? res) (map? res)) res (make-elem (res "dest") (res "value") (res "id"))))                   
+                           (if (or (nil? res) (map? res)) res (make-elem (first (first %)) (second (first %)) (res "transId"))))                   
                    )
                 addr-amount)
                vec
