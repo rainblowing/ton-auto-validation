@@ -213,7 +213,7 @@
                                        "--sign" sign)
                                    get-tx-result
                                    )]
-                           (if (or (nil? res) (map? res)) res (make-elem (first (first %)) (second (first %)) (res "transId"))))                   
+                           (if (or (not (map? res)) (not (contains? res "transId"))) res (make-elem (first (first %)) (second (first %)) (res "transId"))))                   
                    )
                 addr-amount)
                vec
