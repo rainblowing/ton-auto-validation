@@ -4,6 +4,7 @@
   (:require [clojure.java.shell :refer [sh]]
             [clojure.string :as str]
             [clojure.java.io :as io]
+            [clojure.edn :as edn]
             [cheshire.core :as json]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.pprint :as pp]
@@ -80,6 +81,57 @@
   (.toString (read-string hex-num))
   )
 
+(defn slurp-file
+  "gets edn file"
+  [fname]
+  (try
+    (->
+     fname
+     slurp
+     str
+     edn/read-string
+     )
+    (catch Exception e ;(println e)
+      (spit fname [])
+      []
+      )
+    )  
+  )
+
+(defn get-tx-result
+  "gets result from txs"
+  [trans]
+                                        ;(pp/pprint trans)
+  (->
+   trans
+   (get :out)
+   (str/split #"Result:" 2)
+   last
+   str/trim
+   json/parse-string
+   (get "transactions")
+   )
+  )
+
+(defn make-elem
+  "creates vector of vectors"
+  [first second third]
+  (vector (vector first second) third)
+  )
+
+(defn get-elem
+  "gets element from vector where first element is equal to second argument"
+  [coll arg]
+  (first (filter #(= (first %) arg) coll))
+  )
+
+(defn contains-elem
+  "check whether vectors of vector first element is equal to second argument"
+  [coll arg]
+  (seq (filter #(= (first %) arg) coll))
+  )
+
+
 (let [{:keys [addr options exit-message ok?]} (validate-args *command-line-args*)]
   (cond
     exit-message (exit (if ok? 0 1) exit-message)
@@ -93,103 +145,85 @@
       (let [env (take-env)
             tonos-cli (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
             file (take-csv (options :file))
+            addr-amount (map #(make-elem (first %) (second %) "") file)
+            file-tx-name (str (options :file) ".submission")
+            file-tx (slurp-file file-tx-name)
             abi (options :abi)
             config (options :config)
             sign (options :sign)
             ]
 
         (println "parsed csv:")
-        (pp/pprint file)
+        (pp/pprint addr-amount)
+        (println "parsed submissions:")
+        (pp/pprint file-tx)
 
         (cond
           (options :submit)
           (do
             (println "Submitting transactions...")
-            (->>
-             file
-                                        ;get transactions for all addresses in file
-             (map #(list (list (str/trim (first %)) (str/trim (second %)))
-                         (list tonos-cli
-                               "-c" config
-                               "run" (first %)
-                               "getTransactions" "{}"
-                               "--abi" abi)))
-                                        ;batch script launch
-             (map #(list (first %) (apply sh (second %))))
-                                        ;get results for all addresses
-             (map #(do
-                     (pp/pprint %)
-                     (list (first %)
-                           (cond
-                             (str/includes? ((second %) :out) "Result")
-                             (->
-                              (str/split ((second %) :out) #"Result:" 2)
-                              last
-                              str/trim
-                              json/parse-string
-                              (get "transactions")
-                              )
-                             :else nil)
-                           ))
-                  )
-                                        ;filter those addresses which already have destination specified in file
-                                        ;for others submit transaction with given address and amount from file
-             (map #(do
-                     (println "Filtering execessssive transactions for " (first (first %)) "...")
-                     (pp/pprint %)
-                     (list (first %)
-                           (cond
-                             (nil? (second %)) nil
-                                        ;if any of transactions contains destination address and amount value from file
-                                        ;we return nil as protection and cut-off circuit from double spending
-                             (seq (filter (fn [trans] (and (= (first (first %)) (trans "dest")) (= (second (first %)) (hex-to-num-str (trans "value"))))) (second %))) nil
-                             :else (list tonos-cli
-                                         "-c" config
-                                         "call" addr
-                                         "submitTransaction" (str "{\"dest\":\"" (first (first %)) "\",\"value\":" (second (first %)) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
-                                         "--abi" abi
-                                         "--sign" sign)))))
-             (map #(do (pp/pprint %)
-                       (cond
-                         (nil? (second %)) (println "No submission for " (first %))
-                         :else (apply sh (second %)))))
-             ))
+            (let
+                [trans (->
+                                        ;get all transactions
+                        (sh tonos-cli
+                            "-c" config
+                            "run" addr
+                            "getTransactions" "{}"
+                            "--abi" abi)
+                        get-tx-result)
+                 trans_values (map #(make-elem (% "dest") (hex-to-num-str (% "value")) (% "id")) trans)
+                 ]
+
+              (println "trans_values = ")
+              (pp/pprint trans_values)
+
+              (->>
+               (map
+                #(cond
+                   (contains-elem trans_values (first %)) (get-elem trans_values (first %))
+                   :else (let
+                             [res (->
+                                   (sh tonos-cli
+                                       "-c" config
+                                       "call" addr
+                                       "submitTransaction" (str "{\"dest\":\"" (first (first %)) "\",\"value\":" (second (first %)) ",\"bounce\":true,\"allBalance\":false,\"payload\":\"\"}")
+                                       "--abi" abi
+                                       "--sign" sign)
+                                   get-tx-result
+                                   )]
+                           (make-elem (res "dest") (res "value") (res "id")))
+                   
+                   )
+                addr-amount)
+               vec
+               (spit file-tx-name) 
+               )
+
+              ))
           :else
           (do
             (println "Confirming transactions...")
-            (let [
-                  trans (->
-                         (sh tonos-cli
-                             "-c" config
-                             "run" addr
-                             "getTransactions" "{}"
-                             "--abi" abi)
-                         (get :out)
-                         (str/split #"Result:" 2)
-                         last
-                         str/trim
-                         json/parse-string
-                         (get "transactions"))
-                  ]
-              
-              (println "trans = ")
-              (pp/pprint trans)
 
-              (map #(sh tonos-cli
-                        "-c" config
-                        "call" addr
-                        "confirmTransaction" (str "{\"transactionId\":\"" (% "id") "\"}")
-                        "--abi" abi
-                        "--sign" sign                         
-                        )
-              ;(filter #(contains? file (vector (% "dest") (hex-to-num-str (% "value")))) trans)
-                   trans)
-              )
-            )          
-          )
+            (map #(let [comm (list tonos-cli
+                                   "-c" config
+                                   "call" addr
+                                   "confirmTransaction" (str "{\"transactionId\":\"" (second %) "\"}")
+                                   "--abi" abi
+                                   "--sign" sign)]
+                    (println "Transaction")
+                    (pp/pprint %)
+                    (->
+                     (apply sh comm)
+                     pp/pprint
+                     )
+                    )
+                 file-tx)
+            )
+          )          
         )
       )
     )
   )
+
 
 
