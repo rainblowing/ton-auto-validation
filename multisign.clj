@@ -12,7 +12,8 @@
             ))
 
 (def cli-options
-  [["-s" "--submit" "submit only transactions, else will only confirm transactions"]
+  [["-a" "--confirm" "confirm only transactions"]
+   ["-s" "--submit" "submit only transactions"]
    ["-g" "--gen" "generate address amount transaction file"]
    ["-h" "--help"]
    ["-c" "--config PATH" "location of config file"
@@ -221,7 +222,7 @@
                )
 
               ))
-          :else
+          (options :confirm)
           (do
             (println "Confirming transactions...")
 
@@ -240,6 +241,7 @@
                     )
                  file-tx)
             )
+          :else (println "Specify the flag!")
           )          
         )
       )
