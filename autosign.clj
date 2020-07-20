@@ -17,7 +17,12 @@
    ["-M" "--maximum keys_num" "Maximum keys to sign after"
     :default 65536
     :parse-fn #(Integer/parseInt %)]
-   ["-h" "--help"]]
+   ["-h" "--help"]
+   ["-c" "--config PATH" "location of config file"
+    :default "default"]
+   [nil "--abi file" "link to abi json file"
+    :default ""]
+   ]
   )
 
 (defn usage [options-summary]
@@ -56,6 +61,35 @@
   (System/exit status)
   )
 
+(defn get-tx-result
+  "gets result from txs"
+  [trans]
+  (pp/pprint trans)
+  (cond
+    (= (trans :exit) 0)
+    (->
+     trans
+     (get :out)
+     (str/split #"Result:" 2)
+     last
+     str/trim
+     json/parse-string
+     )
+    :else
+    trans
+    )
+  )
+
+(defn take-env
+  "reads environment variables"
+  []
+  (into {} (for [[k v] (map #(str/split % #"=" 2)
+                            (-> (str (System/getenv))
+                                (subs 1)
+                                (str/split #", |}")))] [k v]))
+  )
+
+
 (let [{:keys [addr keys options exit-message ok?]} (validate-args *command-line-args*)]
   (cond
     exit-message (exit (if ok? 0 1) exit-message)  
@@ -68,27 +102,24 @@
       (pp/pprint keys)
       (print "opts = ")
       (pp/pprint options)
-      (let [env (into {} (for [[k v] (map #(str/split % #"=" 2)
-                                          (-> (str (System/getenv))
-                                              (subs 1)
-                                              (str/split #", |}")))] [k v]))
+      (let [env (take-env)
+            tonos-cli (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
+            config (options :config)
+            abi (cond
+                  (empty? (options :abi)) (str (env "KEYS_DIR") "/SafeMultisigWallet.abi.json")
+                  :else (options :abi))
             dest (->
                   (slurp (str (env "KEYS_DIR") "/elections/elector-addr-base64"))
                   str/trim
                   )
             out (->   
                  (sh
-                  (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "run" addr
+                  tonos-cli
+                  "run" addr
                   "getTransactions" "{}"
-                  "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json")) 
-                 (get :out))
-            res (->
-                 (str/split out #"Result:" 2)
-                 last
-                 str/trim
-                 json/parse-string)
-            trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (get res "transactions"))]
-
+                  "--abi" abi) 
+                 get-tx-result)
+            trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (get out "transactions"))]
         (->>
          (for [x trans
                y keys]
