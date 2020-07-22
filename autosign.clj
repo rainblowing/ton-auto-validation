@@ -100,8 +100,8 @@
       (println "addr = " addr)
       (print "keys = ")
       (pp/pprint keys)
-      (print "opts = ")
-      (pp/pprint options)
+      ;(print "opts = ")
+      ;(pp/pprint options)
       (let [env (take-env)
             tonos-cli (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli")
             config (options :config)
@@ -115,19 +115,24 @@
             out (->   
                  (sh
                   tonos-cli
+                  "-c" config
                   "run" addr
                   "getTransactions" "{}"
                   "--abi" abi) 
                  get-tx-result)
             trans (filter #(and (= dest (% "dest")) (>= (edn/read-string (% "signsReceived")) (options :minimum)) (< (edn/read-string (% "signsReceived")) (options :maximum))) (get out "transactions"))]
+        (println "config = " config)
+        (println "abi = " abi)
         (->>
          (for [x trans
                y keys]
            (list x y)
            )
-         (map #(list (str (env "TONOS_CLI_SRC_DIR") "/target/release/tonos-cli") "call" addr 
+         (map #(list tonos-cli
+                     "-c" config
+                     "call" addr 
                      "confirmTransaction" (str "{\"transactionId\":\"" ((first %) "id") "\"}")
-                     "--abi" (str (env "KEYS_DIR") "/" "SafeMultisigWallet.abi.json")
+                     "--abi" abi
                      "--sign" (second %)))
          (map #(do (pp/pprint %) (apply sh %)))
          )
