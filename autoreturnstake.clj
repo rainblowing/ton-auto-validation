@@ -133,6 +133,7 @@
                   "-rc" (str "runmethod " dest " active_election_id")
                   "-rc" "quit")
                  (get :out)
+                 ;println
                  )
             res (->           
                  (str/split out #"result:" 2)
@@ -215,7 +216,7 @@
                                                                   )
                                                                 (spit return-res-file {:autoreturn-tried (+ return-tried 1)})
                                                                 )
-          :else (println "Too many staking tries this election round")
+          :else (println "Too many return tries this election round")
           )
         )
       )
